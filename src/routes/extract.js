@@ -32,7 +32,8 @@ router.get("/download/:filename", function (req, res, next) {
 
 // extract audio or images from video
 function extract(req, res, next) {
-  let extract = res.locals.extract;
+let extract = res.locals.extract;
+  console.log(`Processing extraction: ${extract}`);
   logger.debug(`extract ${extract}`);
 
   let fps = req.query.fps || 1;
@@ -65,19 +66,21 @@ var ffmpegCommand = ffmpeg(savedFile);
     .renice(constants.defaultFFMPEGProcessPriority)
     .inputOptions(["-fflags", "+genpts"])
     .outputOptions(ffmpegParams.outputOptions)
-    .on("error", function (err) {
+.on("error", function (err) {
       logger.error(`${err}`);
+      console.error(`ffmpeg error: ${err}`);
       utils.deleteFile(savedFile);
       res.writeHead(500, { Connection: "close" });
       res.end(JSON.stringify({ error: `${err}` }));
     });
 
   //extract audio track from video as wav
-  if (extract === "audio") {
+if (extract === "audio") {
     let audioFile = `${outputFile}.mp3`;
     ffmpegCommand
       .format("mp3")
       .on("end", function () {
+        console.log(`Audio extraction ended`);
         logger.debug(`ffmpeg process ended`);
 
         utils.deleteFile(savedFile);
@@ -90,7 +93,8 @@ var ffmpegCommand = ffmpeg(savedFile);
   if (extract === "images") {
     ffmpegCommand
       .output(`${outputFile}-%04d.png`)
-      .on("end", function () {
+.on("end", function () {
+        console.log(`Images extraction ended`);
         logger.debug(`ffmpeg process ended`);
 
         utils.deleteFile(savedFile);
