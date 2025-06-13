@@ -54,6 +54,10 @@ let extract = res.locals.extract;
   ffmpegParams.extension = format;
 
   let savedFile = res.locals.savedFile;
+  if (!savedFile) {
+    console.error("Multipart: Boundary not found");
+    return res.status(400).send({ error: "Multipart: Boundary not found" });
+  }
   if (res.locals.extract === "audio") {
     try {
       let stats = fs.statSync(savedFile);
