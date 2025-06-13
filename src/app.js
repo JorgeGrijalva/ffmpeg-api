@@ -1,5 +1,9 @@
 const express = require("express");
 const app = express();
+app.use(function(req, res, next) {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 const compression = require("compression");
 const all_routes = require("express-list-endpoints");
 const cors = require("cors");
@@ -108,6 +112,7 @@ app.use(function (req, res, next) {
 
 //custom error handler to return text/plain and message only
 app.use(function (err, req, res, next) {
+  console.error(`Error encountered: ${err.message}`);
   let code = err.statusCode || 500;
   let message = err.message;
   res.writeHead(code, { "content-type": "text/plain" });
