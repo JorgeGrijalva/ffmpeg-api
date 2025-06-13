@@ -1,0 +1,121 @@
+= FFMPEG API
+
+A web service for converting audio/video/image files using FFMPEG.
+
+Based on:
+
+* https://github.com/surebert/docker-ffmpeg-service
+* https://github.com/jrottenberg/ffmpeg 
+* https://github.com/fluent-ffmpeg/node-fluent-ffmpeg
+
+FFMPEG API is provided as Docker image for easy consumption.
+
+== Endpoints
+
+* `GET /` - API Readme.
+* `GET /endpoints` - Service endpoints as JSON.
+* `POST /convert/audio/to/mp3` - Convert audio file in request body to mp3. Returns mp3-file.
+* `POST /convert/audio/to/wav` - Convert audio file in request body to wav. Returns wav-file.
+* `POST /convert/video/to/mp4` - Convert video file in request body to mp4. Returns mp4-file.
+* `POST /convert/image/to/jpg` - Convert image file to jpg. Returns jpg-file.
+* `POST /video/extract/audio` - Extract audio track from POSTed video file. Returns audio track as 1-channel wav-file.
+** Query param: `mono=no` - Returns audio track, all channels.
+* `POST /video/extract/images` - Extract images from POSTed video file as PNG. Default FPS is 1. Returns JSON that includes download links to extracted images.
+** Query param: `compress=zip|gzip` - Returns extracted images as _zip_ or _tar.gz_ (gzip).
+** Query param: `fps=2` - Extract images using specified FPS. 
+* `GET /video/extract/download/:filename` - Downloads extracted image file and deletes it from server.
+** Query param: `delete=no` - does not delete file.
+* `POST /probe` - Probe media file, return JSON metadata.
+
+== Docker image
+
+=== Build your own
+
+* Clone this repository.
+* Build Docker image:
+** `docker build -t ffmpeg-api .`
+* Run image in foreground:
+** `docker run -it --rm --name ffmpeg-api -p 3000:3000 ffmpeg-api`
+* Run image in background:
+** `docker run -d --name ffmpeg-api -p 3000:3000 ffmpeg-api`
+
+=== Use existing
+
+* Run image in foreground:
+** `docker run -it --rm --name ffmpeg-api -p 3000:3000 kazhar/ffmpeg-api`
+* Run image in background:
+** `docker run -d --name ffmpeg-api -p 3000:3000 kazhar/ffmpeg-api`
+
+=== Environment variables
+
+* Default log level is _info_. Set log level using environment variable, _LOG_LEVEL_.
+** Set log level to debug:
+** `docker run -it --rm -p 3000:3000 -e LOG_LEVEL=debug kazhar/ffmpeg-api`
+* Default maximum file size of uploaded files is 512MB. Use environment variable _FILE_SIZE_LIMIT_BYTES_ to change it:
+** Set max file size to 1MB:
+** `docker run -it --rm -p 3000:3000 -e FILE_SIZE_LIMIT_BYTES=1048576 kazhar/ffmpeg-api`
+* All uploaded and converted files are deleted when they've been downloaded. Use environment variable _KEEP_ALL_FILES_ to keep all files inside the container /tmp-directory:
+** `docker run -it --rm -p 3000:3000 -e KEEP_ALL_FILES=true kazhar/ffmpeg-api`
+* When running on Docker/Kubernetes, port binding can be different than default 3000. Use _EXTERNAL_PORT_ to set up external port in returned URLs in extracted images JSON:
+** `docker run -it --rm -p 3001:3000 -e EXTERNAL_PORT=3001 kazhar/ffmpeg-api`
+
+
+== Usage
+
+Input file to FFMPEG API can be anything that ffmpeg supports. See https://www.ffmpeg.org/general.html#Supported-File-Formats_002c-Codecs-or-Features[ffmpeg docs for supported formats].
+
+=== Convert
+
+Convert audio/video/image files using the API.
+
+* `curl -F "file=@input.wav" 127.0.0.1:3000/convert/audio/to/mp3  > output.mp3`
+* `curl -F "file=@input.m4a" 127.0.0.1:3000/convert/audio/to/wav  > output.wav`
+* `curl -F "file=@input.mov" 127.0.0.1:3000/convert/video/to/mp4  > output.mp4`
+* `curl -F "file=@input.mp4" 127.0.0.1:3000/convert/videp/to/mp4  > output.mp4`
+* `curl -F "file=@input.tiff" 127.0.0.1:3000/convert/image/to/jpg  > output.jpg`
+* `curl -F "file=@input.png" 127.0.0.1:3000/convert/image/to/jpg  > output.jpg`
+
+=== Extract images
+
+Extract images from video using the API.
+
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/images`
+** Returns JSON that lists image download URLs for each extracted image.
+** Default FPS is 1.
+** Images are in PNG-format.
+** See sample: link:./samples/extracted_images.json[extracted_images.json].
+* `curl 127.0.0.1:3000/video/extract/download/ba0f565c-0001.png`
+** Downloads exracted image and deletes it from server.
+* `curl 127.0.0.1:3000/video/extract/download/ba0f565c-0001.png?delete=no`
+** Downloads exracted image but does not deletes it from server.
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/images?compress=zip > images.zip`
+** Returns ZIP package of all extracted images.
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/images?compress=gzip > images.tar.gz`
+** Returns GZIP (tar.gz) package of all extracted images.
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/images?fps=0.5`
+** Sets FPS to extract images. FPS=0.5 is every two seconds, FPS=4 is four images per seconds, etc.
+
+=== Extract audio
+
+Extract audio track from video using the API.
+
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/audio`
+** Returns 1-channel WAV-file of video's audio track.
+* `curl -F "file=@input.mov" 127.0.0.1:3000/video/extract/audio?mono=no`
+** Returns WAV-file of video's audio track, with all the channels as in input video.
+
+=== Probe
+
+Probe audio/video/image files using the API.
+
+* `curl -F "file=@input.mov" 127.0.0.1:3000/probe`
+** Returns JSON metadata of media file.
+** The same JSON metadata as in ffprobe command: `ffprobe -of json -show_streams -show_format input.mov`.
+** See sample of MOV-video metadata: link:./samples/probe_metadata.json[probe_metadata.json].
+
+
+== Background
+
+Originally developed by https://github.com/surebert[Paul Visco].                  
+
+Changes include new functionality, updated Node.js version, Docker image based on Alpine, logging and other major refactoring.

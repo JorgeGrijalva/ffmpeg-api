@@ -1,0 +1,13 @@
+=== 0.3
+
+* Added EXTERNAL_PORT env variable.
+
+=== 0.2
+
+* Added extract images and audio endpoints.
+* Added probe endpoint.
+* Major refactoring.
+
+=== 0.1
+
+* Initial version.
