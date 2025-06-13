@@ -54,6 +54,14 @@ let extract = res.locals.extract;
   ffmpegParams.extension = format;
 
   let savedFile = res.locals.savedFile;
+  if (res.locals.extract === "audio") {
+    try {
+      let stats = fs.statSync(savedFile);
+      console.log(`Audio extraction - input file size: ${stats.size} bytes`);
+    } catch(err) {
+      console.error(`Error getting file stats: ${err}`);
+    }
+  }
 
   var outputFile = uniqueFilename("/tmp/");
   logger.debug(`outputFile ${outputFile}`);
