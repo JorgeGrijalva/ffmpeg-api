@@ -46,8 +46,8 @@ function extract(req, res, next) {
   }
   if (extract === "audio") {
     format = "mp3";
-    ffmpegParams.outputOptions = ["-ac 1", "-codec:a libmp3lame", "-b:a 48k"];
-    logger.debug("extracting audio, 1 channel only");
+    ffmpegParams.outputOptions = ["-ac 1", "-codec:a libmp3lame", "-b:a 32k"];
+    logger.debug("extracting audio with low bitrate, 1 channel");
   }
 
   ffmpegParams.extension = format;
@@ -60,9 +60,10 @@ function extract(req, res, next) {
   logger.debug(`uniqueFileNamePrefix ${uniqueFileNamePrefix}`);
 
   //ffmpeg processing...
-  var ffmpegCommand = ffmpeg(savedFile);
+var ffmpegCommand = ffmpeg(savedFile);
   ffmpegCommand = ffmpegCommand
     .renice(constants.defaultFFMPEGProcessPriority)
+    .inputOptions(["-fflags", "+genpts"])
     .outputOptions(ffmpegParams.outputOptions)
     .on("error", function (err) {
       logger.error(`${err}`);
